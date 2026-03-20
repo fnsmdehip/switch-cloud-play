@@ -1,0 +1,54 @@
+# Switch Cloud Play Configuration
+
+video:
+  # Source: "capture_card" or "sysdvr"
+  source: capture_card
+
+  capture_card:
+    # Device index (0 = first camera/capture device, 1 = second, etc.)
+    device_index: 0
+    width: 1920
+    height: 1080
+    fps: 60
+
+  sysdvr:
+    # SysDVR streaming mode: "usb" or "tcp"
+    mode: tcp
+    # Switch IP (only for tcp mode)
+    switch_ip: "192.168.1.100"
+    port: 6666
+
+display:
+  # Window title
+  title: "Switch Cloud Play"
+  # Fullscreen on launch
+  fullscreen: false
+  # VSync
+  vsync: true
+  # Show FPS overlay
+  show_fps: true
+
+input:
+  # Controller index (0 = first gamepad)
+  controller_index: 0
+  # Deadzone for analog sticks (0.0 - 1.0)
+  deadzone: 0.15
+
+bridge:
+  # How to send input to Switch: "serial", "network", or "nxbt"
+  mode: serial
+
+  serial:
+    # Serial port for microcontroller (Arduino/Pico)
+    port: "/dev/tty.usbmodem1101"
+    baud_rate: 115200
+
+  network:
+    # For sys-hidplus or Raspberry Pi bridge
+    host: "192.168.1.100"
+    port: 8000
+
+  nxbt:
+    # Raspberry Pi running NXBT
+    pi_host: "192.168.1.200"
+    pi_port: 9000
