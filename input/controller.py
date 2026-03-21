@@ -13,6 +13,7 @@ class ControllerReader:
         self.controller_index = controller_index
         self.deadzone = deadzone
         self.joystick = None
+        self.name = None
 
         pygame.init()
         pygame.joystick.init()
@@ -25,7 +26,8 @@ class ControllerReader:
 
         self.joystick = pygame.joystick.Joystick(controller_index)
         self.joystick.init()
-        print(f"    Controller: {self.joystick.get_name()}")
+        self.name = self.joystick.get_name()
+        print(f"    Controller: {self.name}")
         print(f"    Axes: {self.joystick.get_numaxes()}, "
               f"Buttons: {self.joystick.get_numbuttons()}, "
               f"Hats: {self.joystick.get_numhats()}")

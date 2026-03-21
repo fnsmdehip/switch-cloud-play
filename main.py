@@ -13,11 +13,11 @@ Usage:
 """
 
 import argparse
+import os
 import signal
 import sys
 import time
 import yaml
-import numpy as np
 
 from video.capture_card import CaptureCardSource
 from video.sysdvr import SysDVRSource
@@ -30,6 +30,10 @@ from bridge.nxbt_bridge import NXBTBridge
 
 
 def load_config(path="config.yaml"):
+    # Resolve path relative to this script's directory
+    if not os.path.isabs(path):
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(script_dir, path)
     with open(path) as f:
         return yaml.safe_load(f)
 
@@ -76,6 +80,7 @@ def main():
     parser.add_argument("--video", choices=["capture_card", "sysdvr"], help="Video source override")
     parser.add_argument("--bridge", choices=["serial", "network", "nxbt"], help="Bridge mode override")
     parser.add_argument("--fullscreen", action="store_true", help="Launch fullscreen")
+    parser.add_argument("--view-only", action="store_true", help="Video only, skip controller/bridge setup")
     parser.add_argument("--list-devices", action="store_true", help="List video capture devices and exit")
     args = parser.parse_args()
 
@@ -97,16 +102,20 @@ def main():
         show_fps=cfg["display"].get("show_fps", True),
     )
 
-    print("[*] Initializing controller...")
-    controller = ControllerReader(
-        controller_index=cfg["input"]["controller_index"],
-        deadzone=cfg["input"]["deadzone"],
-    )
+    controller = None
+    bridge = None
+    mapper = None
 
-    print("[*] Initializing input bridge...")
-    bridge = make_bridge(cfg, args.bridge)
+    if not args.view_only:
+        print("[*] Initializing controller...")
+        controller = ControllerReader(
+            controller_index=cfg["input"]["controller_index"],
+            deadzone=cfg["input"]["deadzone"],
+        )
 
-    mapper = SwitchMapper()
+        print("[*] Initializing input bridge...")
+        bridge = make_bridge(cfg, args.bridge)
+        mapper = SwitchMapper()
 
     # Graceful shutdown
     running = True
@@ -124,42 +133,40 @@ def main():
         print("    Make sure your capture card is connected or SysDVR is running.")
         sys.exit(1)
 
-    try:
-        bridge.connect()
-        print(f"[+] Bridge connected ({cfg['bridge']['mode']})")
-    except Exception as e:
-        print(f"[!] Failed to connect bridge: {e}")
-        print("    Continuing without input forwarding (view-only mode).")
-        bridge = None
+    if bridge:
+        try:
+            bridge.connect()
+            print(f"[+] Bridge connected ({cfg['bridge']['mode']})")
+        except Exception as e:
+            print(f"[!] Failed to connect bridge: {e}")
+            print("    Continuing without input forwarding (view-only mode).")
+            bridge = None
+    else:
+        print("[*] View-only mode — no controller input forwarding.")
 
     print("[+] Running! Press Ctrl+C or close window to quit.")
-    print("    Press F11 to toggle fullscreen.")
+    print("    Press F to toggle fullscreen.")
 
     # Main loop
-    frame_count = 0
-    fps_time = time.time()
-
     while running:
         # 1. Grab video frame
         frame = video_source.read()
         if frame is None:
             time.sleep(0.001)
             continue
+        capture_time = time.time()
 
-        # 2. Read controller input
-        raw_input = controller.poll()
+        # 2. Read controller input and forward to Switch
+        if controller and bridge and mapper:
+            raw_input = controller.poll()
+            if raw_input:
+                switch_state = mapper.map(raw_input, controller_name=controller.name)
+                bridge.send(switch_state)
 
-        # 3. Map to Switch format and send
-        if bridge and raw_input:
-            switch_state = mapper.map(raw_input)
-            bridge.send(switch_state)
-
-        # 4. Display frame
-        should_quit = display.show(frame)
+        # 3. Display frame with latency overlay
+        should_quit = display.show(frame, capture_time=capture_time)
         if should_quit:
             break
-
-        frame_count += 1
 
     # Cleanup
     print("\n[*] Shutting down...")
@@ -167,7 +174,8 @@ def main():
     if bridge:
         bridge.disconnect()
     display.close()
-    controller.close()
+    if controller:
+        controller.close()
     print("[+] Done.")
 
 

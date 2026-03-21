@@ -27,8 +27,14 @@ class Display:
             cv2.setWindowProperty(self.title, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         self._window_created = True
 
-    def show(self, frame):
-        """Display a frame. Returns True if the window should close."""
+    def show(self, frame, capture_time=None):
+        """Display a frame. Returns True if the window should close.
+
+        Args:
+            frame: BGR numpy array from video source
+            capture_time: time.time() taken right after frame was captured,
+                          used to measure capture-to-display latency
+        """
         self._create_window()
 
         # Calculate FPS
@@ -40,11 +46,15 @@ class Display:
             self._frame_count = 0
             self._fps_time = now
 
-        # Draw FPS overlay
+        # Draw overlay
         if self.show_fps:
+            label = f"{self._fps:.1f} FPS"
+            if capture_time is not None:
+                latency_ms = (now - capture_time) * 1000
+                label += f" | {latency_ms:.0f}ms"
             cv2.putText(
                 frame,
-                f"{self._fps:.1f} FPS",
+                label,
                 (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.8,

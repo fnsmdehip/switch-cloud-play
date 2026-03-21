@@ -17,9 +17,18 @@ if ! python3 -m pip --version &>/dev/null; then
     python3 -m ensurepip --upgrade
 fi
 
+# Create venv if it doesn't exist
+if [ ! -d "venv" ]; then
+    echo "[*] Creating virtual environment..."
+    python3 -m venv venv
+fi
+
+echo "[*] Activating virtual environment..."
+source venv/bin/activate
+
 # Install Python dependencies
 echo "[*] Installing Python dependencies..."
-python3 -m pip install -r requirements.txt
+pip install -r requirements.txt
 
 # Check ffmpeg (needed for SysDVR TCP mode)
 if command -v ffmpeg &>/dev/null; then
@@ -52,5 +61,5 @@ echo ""
 echo "     c) SysDVR + sys-hidplus (all WiFi, needs homebrew/CFW):"
 echo "        - Set video.source=sysdvr and bridge.mode=network"
 echo ""
-echo "  3. RUN: python3 main.py"
+echo "  3. RUN: source venv/bin/activate && python3 -m switch_cloud_play"
 echo ""

@@ -2,7 +2,8 @@
 """Quick test: verify capture card video works."""
 
 import sys
-sys.path.insert(0, "..")
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from video.capture_card import CaptureCardSource
 from video.display import Display

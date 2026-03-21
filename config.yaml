@@ -5,8 +5,8 @@ video:
   source: capture_card
 
   capture_card:
-    # Device index (0 = first camera/capture device, 1 = second, etc.)
-    device_index: 0
+    # Device index ("auto" = skip webcam and find capture card, or 0/1/2 for manual)
+    device_index: auto
     width: 1920
     height: 1080
     fps: 60
@@ -39,8 +39,8 @@ bridge:
   mode: serial
 
   serial:
-    # Serial port for microcontroller (Arduino/Pico)
-    port: "/dev/tty.usbmodem1101"
+    # Serial port for microcontroller ("auto" = scan /dev/tty.usbmodem*, or set manually)
+    port: auto
     baud_rate: 115200
 
   network:

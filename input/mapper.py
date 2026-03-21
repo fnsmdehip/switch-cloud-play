@@ -60,28 +60,79 @@ DPAD_MAP = {
 }
 
 
+PS_MAP = {
+    "cross": 0,     # Cross (PS) -> B (Switch)
+    "circle": 1,    # Circle (PS) -> A (Switch)
+    "square": 2,    # Square (PS) -> Y (Switch)
+    "triangle": 3,  # Triangle (PS) -> X (Switch)
+    "l1": 4,        # L1 -> L
+    "r1": 5,        # R1 -> R
+    "share": 6,     # Share -> Minus
+    "options": 7,   # Options -> Plus
+    "lstick": 8,    # L-Stick click
+    "rstick": 9,    # R-Stick click
+    "ps": 10,       # PS button -> Home
+}
+
+
 class SwitchMapper:
-    def map(self, raw):
-        """Convert raw gamepad state to Switch controller packet."""
+    def __init__(self, layout="auto"):
+        self.layout = layout
+
+    def _detect_layout(self, controller_name):
+        """Guess controller layout from pygame's reported name."""
+        name = (controller_name or "").lower()
+        if "dualshock" in name or "dualsense" in name or "ps4" in name or "ps5" in name or "sony" in name:
+            return "ps"
+        return "xbox"
+
+    def map(self, raw, controller_name=None):
+        """Convert raw gamepad state to Switch controller packet.
+
+        Auto-detects Xbox vs PS layout from controller_name on first call.
+        Both use the same SDL button indices on macOS; the difference is
+        which face buttons map to which Switch buttons.
+        """
         buttons = raw.get("buttons", [])
 
         def btn(idx):
             return buttons[idx] if idx < len(buttons) else 0
 
+        # Pick layout (Xbox and PS have same SDL indices on macOS,
+        # but face button semantics differ — PS Cross=bottom like Switch B)
+        layout = self.layout
+        if layout == "auto":
+            layout = self._detect_layout(controller_name)
+
         # Build button bitmask
-        # Map Xbox layout → Switch (with A/B and X/Y swap for Nintendo layout)
-        btn_mask = 0
-        if btn(XBOX_MAP["a"]):     btn_mask |= SWITCH_BTN["b"]   # Xbox A → Switch B
-        if btn(XBOX_MAP["b"]):     btn_mask |= SWITCH_BTN["a"]   # Xbox B → Switch A
-        if btn(XBOX_MAP["x"]):     btn_mask |= SWITCH_BTN["y"]   # Xbox X → Switch Y
-        if btn(XBOX_MAP["y"]):     btn_mask |= SWITCH_BTN["x"]   # Xbox Y → Switch X
-        if btn(XBOX_MAP["lb"]):    btn_mask |= SWITCH_BTN["l"]
-        if btn(XBOX_MAP["rb"]):    btn_mask |= SWITCH_BTN["r"]
-        if btn(XBOX_MAP["back"]):  btn_mask |= SWITCH_BTN["minus"]
-        if btn(XBOX_MAP["start"]): btn_mask |= SWITCH_BTN["plus"]
-        if btn(XBOX_MAP["lstick"]):btn_mask |= SWITCH_BTN["lstick"]
-        if btn(XBOX_MAP["rstick"]):btn_mask |= SWITCH_BTN["rstick"]
-        if btn(XBOX_MAP["guide"]): btn_mask |= SWITCH_BTN["home"]
+        if layout == "ps":
+            # PS: Cross(0)=B, Circle(1)=A, Square(2)=Y, Triangle(3)=X
+            btn_mask = 0
+            if btn(PS_MAP["cross"]):    btn_mask |= SWITCH_BTN["b"]
+            if btn(PS_MAP["circle"]):   btn_mask |= SWITCH_BTN["a"]
+            if btn(PS_MAP["square"]):   btn_mask |= SWITCH_BTN["y"]
+            if btn(PS_MAP["triangle"]): btn_mask |= SWITCH_BTN["x"]
+            if btn(PS_MAP["l1"]):       btn_mask |= SWITCH_BTN["l"]
+            if btn(PS_MAP["r1"]):       btn_mask |= SWITCH_BTN["r"]
+            if btn(PS_MAP["share"]):    btn_mask |= SWITCH_BTN["minus"]
+            if btn(PS_MAP["options"]):  btn_mask |= SWITCH_BTN["plus"]
+            if btn(PS_MAP["lstick"]):   btn_mask |= SWITCH_BTN["lstick"]
+            if btn(PS_MAP["rstick"]):   btn_mask |= SWITCH_BTN["rstick"]
+            if btn(PS_MAP["ps"]):       btn_mask |= SWITCH_BTN["home"]
+        else:
+            # Xbox: A(0)=B, B(1)=A, X(2)=Y, Y(3)=X (Nintendo A/B X/Y swap)
+            btn_mask = 0
+            if btn(XBOX_MAP["a"]):     btn_mask |= SWITCH_BTN["b"]
+            if btn(XBOX_MAP["b"]):     btn_mask |= SWITCH_BTN["a"]
+            if btn(XBOX_MAP["x"]):     btn_mask |= SWITCH_BTN["y"]
+            if btn(XBOX_MAP["y"]):     btn_mask |= SWITCH_BTN["x"]
+            if btn(XBOX_MAP["lb"]):    btn_mask |= SWITCH_BTN["l"]
+            if btn(XBOX_MAP["rb"]):    btn_mask |= SWITCH_BTN["r"]
+            if btn(XBOX_MAP["back"]):  btn_mask |= SWITCH_BTN["minus"]
+            if btn(XBOX_MAP["start"]): btn_mask |= SWITCH_BTN["plus"]
+            if btn(XBOX_MAP["lstick"]):btn_mask |= SWITCH_BTN["lstick"]
+            if btn(XBOX_MAP["rstick"]):btn_mask |= SWITCH_BTN["rstick"]
+            if btn(XBOX_MAP["guide"]): btn_mask |= SWITCH_BTN["home"]
 
         # Triggers → ZL/ZR (analog triggers treated as digital)
         if raw.get("left_trigger", 0) > 0.5:

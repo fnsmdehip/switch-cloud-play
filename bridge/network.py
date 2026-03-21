@@ -9,10 +9,12 @@ Sends compact binary packets over UDP for minimal latency.
 """
 
 import socket
-import struct
+from input.mapper import SwitchMapper
 
 
 class NetworkBridge:
+    _packer = SwitchMapper()
+
     def __init__(self, host="192.168.1.100", port=8000):
         self.host = host
         self.port = port
@@ -23,25 +25,14 @@ class NetworkBridge:
         # Set low-latency socket options
         self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_TOS, 0x10)  # low delay
         self.sock.setblocking(False)
-        print(f"    Network bridge: UDP → {self.host}:{self.port}")
+        print(f"    Network bridge: UDP -> {self.host}:{self.port}")
 
     def send(self, switch_state):
         """Send Switch controller state over UDP."""
         if not self.sock:
             return
-        packet = struct.pack(
-            "BBBBBBBB",
-            0xAB,
-            (switch_state["buttons"] >> 8) & 0xFF,
-            switch_state["buttons"] & 0xFF,
-            switch_state["dpad"],
-            switch_state["lx"],
-            switch_state["ly"],
-            switch_state["rx"],
-            switch_state["ry"],
-        )
         try:
-            self.sock.sendto(packet, (self.host, self.port))
+            self.sock.sendto(self._packer.to_bytes(switch_state), (self.host, self.port))
         except (BlockingIOError, OSError):
             pass
 

@@ -12,11 +12,12 @@ Setup: Raspberry Pi 3/4/5 with Bluetooth, running nxbt_server.py.
 """
 
 import socket
-import struct
-import json
+from input.mapper import SwitchMapper
 
 
 class NXBTBridge:
+    _packer = SwitchMapper()
+
     def __init__(self, host="192.168.1.200", port=9000):
         self.host = host
         self.port = port
@@ -28,26 +29,15 @@ class NXBTBridge:
 
         # Send a handshake to verify Pi is listening
         self.sock.sendto(b"HELLO", (self.host, self.port))
-        print(f"    NXBT bridge: UDP → {self.host}:{self.port}")
+        print(f"    NXBT bridge: UDP -> {self.host}:{self.port}")
         print("    Make sure nxbt_server.py is running on your Raspberry Pi.")
 
     def send(self, switch_state):
         """Send Switch controller state to Pi."""
         if not self.sock:
             return
-        packet = struct.pack(
-            "BBBBBBBB",
-            0xAB,
-            (switch_state["buttons"] >> 8) & 0xFF,
-            switch_state["buttons"] & 0xFF,
-            switch_state["dpad"],
-            switch_state["lx"],
-            switch_state["ly"],
-            switch_state["rx"],
-            switch_state["ry"],
-        )
         try:
-            self.sock.sendto(packet, (self.host, self.port))
+            self.sock.sendto(self._packer.to_bytes(switch_state), (self.host, self.port))
         except (BlockingIOError, OSError):
             pass
 
